@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Generierte Ausgaben (werden nicht eingecheckt, nur Quelldateien)
+# Die fertigen PDFs in templates/ werden explizit eingecheckt (Binär-Assets)
+*.log
+tmp/
