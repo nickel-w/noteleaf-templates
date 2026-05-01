@@ -6,7 +6,15 @@ Generates print-ready A5 PDF templates for the NC Planner system.
 Each template contains:
   - Four black corner markers for perspective correction during scanning
   - A QR code encoding the template type and version
+  - A unique geometric type symbol (bottom-left) for secondary recognition
   - Structured content zones that the Scan-App processes with OCR
+
+Symbol legend (bottom-left box, 18×18 mm):
+  daily     → clock face (ring + 12 ticks + centre dot)
+  weekly    → 7 vertical bars (Sa/So slightly shorter)
+  checklist → bold checkmark
+  notes     → 5×5 dot grid
+  habit     → 3×3 checkerboard grid of filled squares
 
 Usage
 -----
@@ -35,6 +43,7 @@ Dependencies:  pip install -r requirements.txt
 from __future__ import annotations
 
 import io
+import math
 import os
 from typing import Any
 
@@ -104,6 +113,158 @@ def _draw_footer(c: canvas.Canvas, template_id: str) -> None:
     c.setFillColor(C_LIGHT)
     c.drawCentredString(W / 2, MARGIN + 1 * mm,
                         f"nc-planner://{template_id}/v1 · A5")
+
+
+# ── Type symbol ──────────────────────────────────────────────────────────────
+
+def _draw_type_symbol(c: canvas.Canvas, template_type: str) -> None:
+    """
+    Draws a unique machine-readable geometric symbol identifying the template.
+
+    Position: bottom-left corner, same size as QR code (18 × 18 mm).
+    The Scan-App uses this symbol as a secondary recognition marker when
+    the QR code is not readable (e.g. obscured ink, torn corner).
+
+    Symbol designs
+    ──────────────
+    daily     : clock face – outer ring + 12 radial ticks + filled centre dot
+    weekly    : 7 vertical bars (weekday bars full-height, weekend bars shorter)
+    checklist : bold L-shaped checkmark
+    notes     : 5 × 5 dot grid (matches printed dot-grid pattern)
+    habit     : 3 × 3 checkerboard of filled/empty squares
+    """
+    sx = MARGIN           # symbol box origin x (same x as left marker)
+    sy = MARGIN           # symbol box origin y (same y as QR code)
+    s  = QR_SIZE          # 18 mm
+
+    pad = 2.2 * mm        # inner padding inside the border box
+    ix  = sx + pad
+    iy  = sy + pad
+    iw  = s - 2 * pad
+    ih  = s - 2 * pad
+    cxs = ix + iw / 2     # inner centre x
+    cys = iy + ih / 2     # inner centre y
+
+    # ── border box (same visual weight as QR code border) ────────────────
+    c.setStrokeColor(C_BLACK)
+    c.setFillColor(colors.white)
+    c.setLineWidth(0.8)
+    c.rect(sx, sy, s, s, fill=1, stroke=1)
+
+    c.setFillColor(C_BLACK)
+    c.setStrokeColor(C_BLACK)
+
+    # ── per-type drawing ──────────────────────────────────────────────────
+    if template_type == "daily":
+        # Clock face: outer ring, 12 hour ticks, filled centre dot
+        r_outer = iw / 2
+        r_tick_in = r_outer * 0.62   # inner end of hour tick
+        r_tick_in_half = r_outer * 0.78  # inner end of half-hour tick
+
+        c.setLineWidth(0.9)
+        c.circle(cxs, cys, r_outer, fill=0, stroke=1)
+
+        for i in range(12):
+            angle = math.radians(90 - i * 30)
+            cos_a, sin_a = math.cos(angle), math.sin(angle)
+            r_in = r_tick_in if i % 3 == 0 else r_tick_in_half
+            lw   = 1.0       if i % 3 == 0 else 0.45
+            c.setLineWidth(lw)
+            c.line(cxs + r_in    * cos_a, cys + r_in    * sin_a,
+                   cxs + r_outer * cos_a, cys + r_outer * sin_a)
+
+        # Filled centre dot
+        c.circle(cxs, cys, 1.0 * mm, fill=1, stroke=0)
+
+        # Short clock hand pointing to ~10 o'clock (decorative)
+        hand_angle = math.radians(90 + 60)   # 10 o'clock direction
+        c.setLineWidth(1.0)
+        c.line(cxs, cys,
+               cxs + r_outer * 0.50 * math.cos(hand_angle),
+               cys + r_outer * 0.50 * math.sin(hand_angle))
+
+    elif template_type == "weekly":
+        # 7 vertical bars: Mon–Fri full height, Sat–Sun at 60 %
+        n     = 7
+        gap   = 0.7 * mm
+        bar_w = (iw - gap * (n - 1)) / n
+
+        for i in range(n):
+            h_frac = 0.60 if i >= 5 else 1.0
+            bh = ih * h_frac
+            bx = ix + i * (bar_w + gap)
+            by = iy  # align to bottom
+            c.rect(bx, by, bar_w, bh, fill=1, stroke=0)
+
+        # Thin separator line between weekdays and weekend
+        sep_x = ix + 5 * (bar_w + gap) - gap / 2
+        c.setStrokeColor(colors.white)
+        c.setLineWidth(0.8)
+        c.line(sep_x, iy, sep_x, iy + ih)
+        c.setStrokeColor(C_BLACK)
+
+    elif template_type == "checklist":
+        # Bold checkmark: thin arm + thick arm, classic tick shape
+        lw = 2.2
+        c.setLineWidth(lw)
+        c.setLineCap(1)   # round caps
+
+        # Checkmark vertices (relative to inner box)
+        p1x = ix + iw * 0.08;  p1y = iy + ih * 0.52
+        p2x = ix + iw * 0.38;  p2y = iy + ih * 0.16
+        p3x = ix + iw * 0.92;  p3y = iy + ih * 0.84
+
+        p = c.beginPath()
+        p.moveTo(p1x, p1y)
+        p.lineTo(p2x, p2y)
+        p.lineTo(p3x, p3y)
+        c.drawPath(p, stroke=1, fill=0)
+        c.setLineCap(0)
+
+    elif template_type == "notes":
+        # 5 × 5 dot grid – mirrors the printed dot-grid of the notes page
+        n   = 5
+        r   = 0.75 * mm
+        gx  = iw / (n - 1)
+        gy  = ih / (n - 1)
+
+        for row in range(n):
+            for col in range(n):
+                dx = ix + col * gx
+                dy = iy + row * gy
+                c.circle(dx, dy, r, fill=1, stroke=0)
+
+    elif template_type == "habit":
+        # 3 × 3 checkerboard – encodes a unique spatial bit-pattern
+        # Pattern: filled on main-diagonal & anti-diagonal corners, empty centre
+        #   ■ □ ■
+        #   □ ■ □
+        #   ■ □ ■
+        n    = 3
+        gap  = 1.2 * mm
+        cell = (iw - gap * (n - 1)) / n
+
+        pattern = [
+            [True,  False, True ],
+            [False, True,  False],
+            [True,  False, True ],
+        ]
+
+        for row in range(n):
+            for col in range(n):
+                bx = ix + col * (cell + gap)
+                by = iy + row * (cell + gap)
+                if pattern[row][col]:
+                    c.setFillColor(C_BLACK)
+                    c.rect(bx, by, cell, cell, fill=1, stroke=0)
+                else:
+                    c.setFillColor(colors.white)
+                    c.setStrokeColor(C_LIGHT)
+                    c.setLineWidth(0.3)
+                    c.rect(bx, by, cell, cell, fill=1, stroke=1)
+                    # restore defaults
+                    c.setFillColor(C_BLACK)
+                    c.setStrokeColor(C_BLACK)
 
 
 def _header_bar(c: canvas.Canvas, title: str, subtitle: str = "") -> float:
@@ -200,6 +361,7 @@ def make_tagesplan(path: str, date_str: str = "", *,
     c = _new_canvas(path)
     _draw_markers(c)
     _draw_qr(c, "nc-planner://daily/v1")
+    _draw_type_symbol(c, "daily")
     _draw_footer(c, "daily")
     top = _header_bar(c, "Tagesplan", date_str or "________________")
 
@@ -309,6 +471,7 @@ def make_wochenplan(path: str, week_str: str = "", *,
     c = _new_canvas(path)
     _draw_markers(c)
     _draw_qr(c, "nc-planner://weekly/v1")
+    _draw_type_symbol(c, "weekly")
     _draw_footer(c, "weekly")
     top = _header_bar(c, "Wochenplan", week_str or "KW ____")
 
@@ -382,6 +545,7 @@ def make_checkliste(path: str, *,
     c = _new_canvas(path)
     _draw_markers(c)
     _draw_qr(c, "nc-planner://checklist/v1")
+    _draw_type_symbol(c, "checklist")
     _draw_footer(c, "checklist")
     top = _header_bar(c, "Checkliste", "________________")
 
@@ -441,6 +605,7 @@ def make_notizseite(path: str, *, title: str = "", tags: str = "") -> None:
     c = _new_canvas(path)
     _draw_markers(c)
     _draw_qr(c, "nc-planner://notes/v1")
+    _draw_type_symbol(c, "notes")
     _draw_footer(c, "notes")
     top = _header_bar(c, "Notizen", "________________")
 
@@ -500,6 +665,7 @@ def make_habit_tracker(path: str, month_str: str = "", *,
     c = _new_canvas(path)
     _draw_markers(c)
     _draw_qr(c, "nc-planner://habit/v1")
+    _draw_type_symbol(c, "habit")
     _draw_footer(c, "habit")
     top = _header_bar(c, "Habit Tracker", month_str or "____________  2026")
 
@@ -535,7 +701,7 @@ def make_habit_tracker(path: str, month_str: str = "", *,
                 c.setFillColor(colors.HexColor("#e1f5ee"))
                 c.rect(x, ry, day_w, row_h, fill=1, stroke=0)
                 c.setFont(FONT_BODY, 5); c.setFillColor(colors.HexColor("#0F6E56"))
-                c.drawCentredString(x + day_w/2, ry + row_h*0.35, "✓")
+                c.drawCentredString(x + day_w/2, ry + row_h*0.35, "v")
             c.setStrokeColor(C_XLIGHT); c.setLineWidth(0.25)
             c.rect(x, ry, day_w, row_h, fill=0, stroke=1)
 
