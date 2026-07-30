@@ -35,7 +35,7 @@ Jede Vorlage enthält drei maschinenlesbare Elemente:
 
 - **4 schwarze Quadrate** in den Ecken (Ausrichtungsmarker, 5×5 mm)
 - **QR-Code** rechts unten (18×18 mm) – kodiert Vorlagentyp und Version
-- **Strukturierte Zonen** – jede Zone wird von der Scan-App separat per OCR verarbeitet
+- **Strukturierte Zonen** – jede Zone wird von der Scan-Verarbeitung in der Nextcloud-App separat ausgewertet
 
 ---
 
@@ -106,7 +106,7 @@ pdfjam --nup 2x1 --a4paper templates/01_tagesplan.pdf -o tagesplan_a4.pdf
 
 1. Funktion `make_meinevorlage()` in `scripts/generate_templates.py` ergänzen
 2. QR-Payload definieren: `nc-planner://meintyp/v1`
-3. Zonen-Definition in der **Scan-App** (`lib/models/template.dart`) ergänzen
+3. Zonen-Definition in der **Nextcloud-App** (`nc_planner/lib/Service/Scan/ScanTemplateRegistry.php`) ergänzen
 4. PDF generieren und in `templates/` committen
 
 ### Vorlagen-Versionen
@@ -117,10 +117,9 @@ Der QR-Code enthält die Version (`/v1`). Bei inkompatiblen Layout-Änderungen V
 
 ## Verwandte Repositories
 
-| Repository | Beschreibung |
-|------------|-------------|
-| `nc_planner_scan` | Flutter-App: Scannen, OCR, Nextcloud-Upload |
-| `nc_planner`      | Nextcloud-App: Tagesübersicht, Druckfunktion |
+| Repository   | Beschreibung |
+|--------------|-------------|
+| `nc_planner` | Nextcloud-App: Tagesübersicht, Druckfunktion, Scan-Verarbeitung (löst die ausgedruckten Vorlagen über einen konfigurierbaren Scan-Ordner und einen Hintergrundjob wieder aus – keine separate Scan-App mehr nötig) |
 
 ---
 
