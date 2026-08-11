@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "page": {
+    "widthMm": 148.0,
+    "heightMm": 210.0,
+    "marginMm": 10.0,
+    "markerMm": 5.0,
+    "qrSizeMm": 18.0
+  },
+  "templates": [
+    {
+      "type": "daily",
+      "displayName": "Tagesplan",
+      "qrPayload": "noteleaf://daily/v1",
+      "zones": [
+        { "id": "time_grid", "type": "timeGrid", "left": 0.121, "top": 0.082, "right": 0.498, "bottom": 0.897 },
+        { "id": "task_list", "type": "taskList", "left": 0.511, "top": 0.082, "right": 0.865, "bottom": 0.337 },
+        { "id": "note_area", "type": "noteArea", "left": 0.511, "top": 0.344, "right": 0.865, "bottom": 0.894 }
+      ]
+    },
+    {
+      "type": "weekly",
+      "displayName": "Wochenplan",
+      "qrPayload": "noteleaf://weekly/v1",
+      "zones": [
+        { "id": "week_grid", "type": "timeGrid", "left": 0.121, "top": 0.095, "right": 0.940, "bottom": 0.897 }
+      ]
+    },
+    {
+      "type": "checklist",
+      "displayName": "Checkliste",
+      "qrPayload": "noteleaf://checklist/v1",
+      "zones": [
+        { "id": "task_list", "type": "taskList", "left": 0.121, "top": 0.082, "right": 0.865, "bottom": 0.897 }
+      ]
+    },
+    {
+      "type": "notes",
+      "displayName": "Notizen",
+      "qrPayload": "noteleaf://notes/v1",
+      "zones": [
+        { "id": "title",     "type": "titleField", "left": 0.121, "top": 0.082, "right": 0.865, "bottom": 0.115 },
+        { "id": "tags",      "type": "tagsField",  "left": 0.121, "top": 0.115, "right": 0.865, "bottom": 0.148 },
+        { "id": "note_area", "type": "noteArea",   "left": 0.121, "top": 0.155, "right": 0.865, "bottom": 0.897 }
+      ]
+    },
+    {
+      "type": "habit",
+      "displayName": "Habit Tracker",
+      "qrPayload": "noteleaf://habit/v1",
+      "zones": [
+        { "id": "habit_grid", "type": "habitGrid", "left": 0.121, "top": 0.082, "right": 0.940, "bottom": 0.850 }
+      ]
+    }
+  ]
+}

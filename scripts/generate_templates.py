@@ -1,13 +1,13 @@
 """
-NC Planner – A5 Template Generator
+Noteleaf – A5 Template Generator
 ===================================
-Generates print-ready A5 PDF templates for the NC Planner system.
+Generates print-ready A5 PDF templates for the Noteleaf system.
 
 Each template contains:
   - Four black corner markers for perspective correction during scanning
   - A QR code encoding the template type and version
   - A unique geometric type symbol (bottom-left) for secondary recognition
-  - Structured content zones that the Scan-App processes with OCR
+  - Structured content zones that the Noteleaf Nextcloud app processes with OCR
 
 Symbol legend (bottom-left box, 18×18 mm):
   daily     → clock face (ring + 12 ticks + centre dot)
@@ -30,12 +30,13 @@ Usage
       tasks=[{"title": "PR reviewen", "completed": False}],
   )
 
-QR payload format:  nc-planner://<type>/v<version>
-  daily     → nc-planner://daily/v1
-  weekly    → nc-planner://weekly/v1
-  checklist → nc-planner://checklist/v1
-  notes     → nc-planner://notes/v1
-  habit     → nc-planner://habit/v1
+QR payload format and content zones are defined in ../templates/manifest.json,
+which is the single source of truth shared with the Noteleaf Nextcloud app
+(nickel-w/noteleaf, lib/Service/Scan/ScanTemplateRegistry.php is generated
+from that manifest — see that repo's bin/generate-scan-registry.php). Keep
+the drawing geometry below visually consistent with the zone boxes declared
+in manifest.json whenever you change a layout; the manifest, not this
+docstring, is what noteleaf's scan code is generated against.
 
 Dependencies:  pip install -r requirements.txt
 """
@@ -43,6 +44,7 @@ Dependencies:  pip install -r requirements.txt
 from __future__ import annotations
 
 import io
+import json
 import math
 import os
 from typing import Any
@@ -53,6 +55,26 @@ from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 import qrcode
+
+_MANIFEST_PATH = os.path.join(os.path.dirname(__file__), "..", "templates", "manifest.json")
+_manifest_cache: dict[str, Any] | None = None
+
+
+def _load_manifest() -> dict[str, Any]:
+    """Loads templates/manifest.json — the shared source of truth for QR
+    payloads and content zones (also consumed by noteleaf's PHP codegen)."""
+    global _manifest_cache
+    if _manifest_cache is None:
+        with open(_MANIFEST_PATH, encoding="utf-8") as f:
+            _manifest_cache = json.load(f)
+    return _manifest_cache
+
+
+def _qr_payload(template_type: str) -> str:
+    for tmpl in _load_manifest()["templates"]:
+        if tmpl["type"] == template_type:
+            return tmpl["qrPayload"]
+    raise KeyError(f"No manifest entry for template type {template_type!r}")
 
 # ── Page dimensions ──────────────────────────────────────────────────────────
 W, H = A5   # 419.53 × 595.28 pt  (ReportLab units, portrait A5)
@@ -112,7 +134,7 @@ def _draw_footer(c: canvas.Canvas, template_id: str) -> None:
     c.setFont(FONT_BODY, 5)
     c.setFillColor(C_LIGHT)
     c.drawCentredString(W / 2, MARGIN + 1 * mm,
-                        f"nc-planner://{template_id}/v1 · A5")
+                        f"{_qr_payload(template_id)} · A5")
 
 
 # ── Type symbol ──────────────────────────────────────────────────────────────
@@ -360,7 +382,7 @@ def make_tagesplan(path: str, date_str: str = "", *,
 
     c = _new_canvas(path)
     _draw_markers(c)
-    _draw_qr(c, "nc-planner://daily/v1")
+    _draw_qr(c, _qr_payload("daily"))
     _draw_type_symbol(c, "daily")
     _draw_footer(c, "daily")
     top = _header_bar(c, "Tagesplan", date_str or "________________")
@@ -470,7 +492,7 @@ def make_wochenplan(path: str, week_str: str = "", *,
     events = events or []
     c = _new_canvas(path)
     _draw_markers(c)
-    _draw_qr(c, "nc-planner://weekly/v1")
+    _draw_qr(c, _qr_payload("weekly"))
     _draw_type_symbol(c, "weekly")
     _draw_footer(c, "weekly")
     top = _header_bar(c, "Wochenplan", week_str or "KW ____")
@@ -544,7 +566,7 @@ def make_checkliste(path: str, *,
 
     c = _new_canvas(path)
     _draw_markers(c)
-    _draw_qr(c, "nc-planner://checklist/v1")
+    _draw_qr(c, _qr_payload("checklist"))
     _draw_type_symbol(c, "checklist")
     _draw_footer(c, "checklist")
     top = _header_bar(c, "Checkliste", "________________")
@@ -604,7 +626,7 @@ def make_notizseite(path: str, *, title: str = "", tags: str = "") -> None:
     """
     c = _new_canvas(path)
     _draw_markers(c)
-    _draw_qr(c, "nc-planner://notes/v1")
+    _draw_qr(c, _qr_payload("notes"))
     _draw_type_symbol(c, "notes")
     _draw_footer(c, "notes")
     top = _header_bar(c, "Notizen", "________________")
@@ -664,7 +686,7 @@ def make_habit_tracker(path: str, month_str: str = "", *,
 
     c = _new_canvas(path)
     _draw_markers(c)
-    _draw_qr(c, "nc-planner://habit/v1")
+    _draw_qr(c, _qr_payload("habit"))
     _draw_type_symbol(c, "habit")
     _draw_footer(c, "habit")
     top = _header_bar(c, "Habit Tracker", month_str or "____________  2026")
