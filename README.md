@@ -1,6 +1,6 @@
-# NC Planner – Druckvorlagen
+# Noteleaf – Druckvorlagen
 
-A5-Druckvorlagen für das NC Planner System.  
+A5-Druckvorlagen für Noteleaf.
 Verbinden analoge Planung mit Nextcloud: ausdrucken, ausfüllen, einscannen.
 
 ---
@@ -9,11 +9,15 @@ Verbinden analoge Planung mit Nextcloud: ausdrucken, ausfüllen, einscannen.
 
 | Datei | Beschreibung | QR-Code |
 |-------|-------------|---------|
-| `01_tagesplan.pdf`    | Stunden-Raster 06:00–21:30, Aufgaben-Checkboxen, Notizbereich | `nc-planner://daily/v1` |
-| `02_wochenplan.pdf`   | 7 Tagesspalten, Stunden-Raster 07:00–22:00 | `nc-planner://weekly/v1` |
-| `03_checkliste.pdf`   | 3 Kategoriegruppen mit je 5–6 Checkboxen | `nc-planner://checklist/v1` |
-| `04_notizseite.pdf`   | Punkt-Raster (Dot Grid), Titel- und Tag-Feld | `nc-planner://notes/v1` |
-| `05_habit_tracker.pdf`| 10 Gewohnheiten × 31 Tage, Streak-Notizbereich | `nc-planner://habit/v1` |
+| `01_tagesplan.pdf`    | Stunden-Raster 06:00–21:30, Aufgaben-Checkboxen, Notizbereich | `noteleaf://daily/v1` |
+| `02_wochenplan.pdf`   | 7 Tagesspalten, Stunden-Raster 07:00–22:00 | `noteleaf://weekly/v1` |
+| `03_checkliste.pdf`   | 3 Kategoriegruppen mit je 5–6 Checkboxen | `noteleaf://checklist/v1` |
+| `04_notizseite.pdf`   | Punkt-Raster (Dot Grid), Titel- und Tag-Feld | `noteleaf://notes/v1` |
+| `05_habit_tracker.pdf`| 10 Gewohnheiten × 31 Tage, Streak-Notizbereich | `noteleaf://habit/v1` |
+
+> Ältere ausgedruckte Bögen mit dem historischen `nc-planner://…`-Schema
+> (Vorgängername der App) werden von der Noteleaf-App weiterhin erkannt –
+> siehe `ScanTemplateRegistry::fromQrPayload()` im `noteleaf`-Repo.
 
 Alle Vorlagen: **A5 (148 × 210 mm)**, schwarz-weiß druckbar.
 
@@ -29,13 +33,19 @@ Jede Vorlage enthält drei maschinenlesbare Elemente:
 │                                          │     für Perspektivkorrektur
 │   [Inhalt]                               │     beim Scan
 │                                          │
-│ ■ (Marker BL)  nc-planner://…/v1  [QR] ■│  ← QR-Code: Vorlagentyp
+│ ■ (Marker BL)   noteleaf://…/v1   [QR] ■│  ← QR-Code: Vorlagentyp
 └─────────────────────────────────────────┘
 ```
 
 - **4 schwarze Quadrate** in den Ecken (Ausrichtungsmarker, 5×5 mm)
 - **QR-Code** rechts unten (18×18 mm) – kodiert Vorlagentyp und Version
-- **Strukturierte Zonen** – jede Zone wird von der Scan-Verarbeitung in der Nextcloud-App separat ausgewertet
+- **Strukturierte Zonen** – jede Zone wird von der Scan-Verarbeitung in der Nextcloud-App (`noteleaf`) separat ausgewertet
+
+Vorlagentyp, QR-Payload und die Zonen-Grenzen jeder Vorlage sind in
+[`templates/manifest.json`](templates/manifest.json) deklariert. Diese Datei
+ist die gemeinsame Quelle der Wahrheit für dieses Repo und für die
+Nextcloud-App `noteleaf`, die daraus ihre Scan-Zonen-Registry generiert
+(siehe Abschnitt „Weiterentwicklung" unten).
 
 ---
 
@@ -104,14 +114,14 @@ pdfjam --nup 2x1 --a4paper templates/01_tagesplan.pdf -o tagesplan_a4.pdf
 
 ### Neue Vorlage hinzufügen
 
-1. Funktion `make_meinevorlage()` in `scripts/generate_templates.py` ergänzen
-2. QR-Payload definieren: `nc-planner://meintyp/v1`
-3. Zonen-Definition in der **Nextcloud-App** (`nc_planner/lib/Service/Scan/ScanTemplateRegistry.php`) ergänzen
-4. PDF generieren und in `templates/` committen
+1. Neuen Eintrag (Typ, `displayName`, `qrPayload`, Zonen) in `templates/manifest.json` ergänzen
+2. Funktion `make_meinevorlage()` in `scripts/generate_templates.py` ergänzen, Zeichnung visuell konsistent zu den Zonen-Grenzen aus dem Manifest halten
+3. PDF generieren (`python scripts/generate_templates.py`) und zusammen mit dem Manifest in `templates/` committen
+4. Im **`noteleaf`**-Repo: Submodule-Pointer auf den neuen Commit aktualisieren (`git submodule update --remote resources/noteleaf-templates`) und `composer run generate-registry` ausführen, um `lib/Service/Scan/ScanTemplateRegistry.php` neu aus dem Manifest zu generieren (Details siehe README dort)
 
 ### Vorlagen-Versionen
 
-Der QR-Code enthält die Version (`/v1`). Bei inkompatiblen Layout-Änderungen Version erhöhen (`/v2`), damit ältere ausgedruckte Bögen weiterhin korrekt erkannt werden.
+Der QR-Code enthält die Version (`/v1`, Feld `qrPayload` im Manifest). Bei inkompatiblen Layout-Änderungen Version erhöhen (`/v2`), damit ältere ausgedruckte Bögen weiterhin korrekt erkannt werden.
 
 ---
 
@@ -119,7 +129,7 @@ Der QR-Code enthält die Version (`/v1`). Bei inkompatiblen Layout-Änderungen V
 
 | Repository   | Beschreibung |
 |--------------|-------------|
-| `nc_planner` | Nextcloud-App: Tagesübersicht, Druckfunktion, Scan-Verarbeitung (löst die ausgedruckten Vorlagen über einen konfigurierbaren Scan-Ordner und einen Hintergrundjob wieder aus – keine separate Scan-App mehr nötig) |
+| `noteleaf`   | Nextcloud-App: Tagesübersicht, Druckfunktion, Scan-Verarbeitung (löst die ausgedruckten Vorlagen über einen konfigurierbaren Scan-Ordner und einen Hintergrundjob wieder aus). Bindet dieses Repository als Git-Submodule ein und generiert daraus `lib/Service/Scan/ScanTemplateRegistry.php` per `composer run generate-registry`. |
 
 ---
 
