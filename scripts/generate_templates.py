@@ -14,7 +14,6 @@ Symbol legend (bottom-left box, 18×18 mm):
   weekly    → 7 vertical bars (Sa/So slightly shorter)
   checklist → bold checkmark
   notes     → 5×5 dot grid
-  habit     → 3×3 checkerboard grid of filled squares
 
 Usage
 -----
@@ -153,7 +152,6 @@ def _draw_type_symbol(c: canvas.Canvas, template_type: str) -> None:
     weekly    : 7 vertical bars (weekday bars full-height, weekend bars shorter)
     checklist : bold L-shaped checkmark
     notes     : 5 × 5 dot grid (matches printed dot-grid pattern)
-    habit     : 3 × 3 checkerboard of filled/empty squares
     """
     sx = MARGIN           # symbol box origin x (same x as left marker)
     sy = MARGIN           # symbol box origin y (same y as QR code)
@@ -256,38 +254,6 @@ def _draw_type_symbol(c: canvas.Canvas, template_type: str) -> None:
                 dy = iy + row * gy
                 c.circle(dx, dy, r, fill=1, stroke=0)
 
-    elif template_type == "habit":
-        # 3 × 3 checkerboard – encodes a unique spatial bit-pattern
-        # Pattern: filled on main-diagonal & anti-diagonal corners, empty centre
-        #   ■ □ ■
-        #   □ ■ □
-        #   ■ □ ■
-        n    = 3
-        gap  = 1.2 * mm
-        cell = (iw - gap * (n - 1)) / n
-
-        pattern = [
-            [True,  False, True ],
-            [False, True,  False],
-            [True,  False, True ],
-        ]
-
-        for row in range(n):
-            for col in range(n):
-                bx = ix + col * (cell + gap)
-                by = iy + row * (cell + gap)
-                if pattern[row][col]:
-                    c.setFillColor(C_BLACK)
-                    c.rect(bx, by, cell, cell, fill=1, stroke=0)
-                else:
-                    c.setFillColor(colors.white)
-                    c.setStrokeColor(C_LIGHT)
-                    c.setLineWidth(0.3)
-                    c.rect(bx, by, cell, cell, fill=1, stroke=1)
-                    # restore defaults
-                    c.setFillColor(C_BLACK)
-                    c.setStrokeColor(C_BLACK)
-
 
 def _header_bar(c: canvas.Canvas, title: str, subtitle: str = "") -> float:
     """Draws header; returns bottom y of header (= top of content area)."""
@@ -355,8 +321,8 @@ def _content_cols():
 
 def _new_canvas(path: str) -> canvas.Canvas:
     c = canvas.Canvas(path, pagesize=A5)
-    c.setTitle("NC Planner Template")
-    c.setAuthor("NC Planner")
+    c.setTitle("Noteleaf Template")
+    c.setAuthor("Noteleaf")
     return c
 
 
@@ -664,104 +630,17 @@ def make_notizseite(path: str, *, title: str = "", tags: str = "") -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Template 5 – Habit Tracker
-# ══════════════════════════════════════════════════════════════════════════════
-
-def make_habit_tracker(path: str, month_str: str = "", *,
-                       habits:  list[str]  | None = None,
-                       checked: dict[tuple[int, int], bool] | None = None) -> None:
-    """
-    Monthly habit tracker A5 PDF.
-
-    Parameters
-    ----------
-    path      : output file path
-    month_str : header label, e.g. "April 2026"
-    habits    : up to 10 habit names (blank rows drawn for remaining slots)
-    checked   : {(habit_index_0based, day_1based): bool} pre-filled check-ins
-    """
-    habits  = (habits or [])[:10]
-    checked = checked or {}
-    num_h   = 10
-
-    c = _new_canvas(path)
-    _draw_markers(c)
-    _draw_qr(c, _qr_payload("habit"))
-    _draw_type_symbol(c, "habit")
-    _draw_footer(c, "habit")
-    top = _header_bar(c, "Habit Tracker", month_str or "____________  2026")
-
-    cl = MARGIN + MARKER_SIZE + 3 * mm
-    cr = W - MARGIN - MARKER_SIZE - 3 * mm
-    ct = top - 4 * mm
-    cb = BOTTOM_SAFE
-
-    label_w = 28 * mm
-    days    = 31
-    day_w   = (cr - cl - label_w) / days
-    row_h   = (ct - cb) / (num_h + 1)
-
-    # Day numbers header
-    for d in range(1, days + 1):
-        x = cl + label_w + (d - 1) * day_w
-        c.setFont(FONT_BODY, 4.5); c.setFillColor(C_MID)
-        c.drawCentredString(x + day_w/2, ct - row_h + 1.2*mm, str(d))
-
-    # Habit rows
-    for hi in range(num_h):
-        ry = ct - (hi + 2) * row_h
-
-        c.setFillColor(C_HEADER_BG)
-        c.rect(cl, ry, label_w, row_h, fill=1, stroke=0)
-        c.setFont(FONT_BODY, 6.5); c.setFillColor(C_DARK)
-        label = habits[hi] if hi < len(habits) else f"Gewohnheit {hi + 1}"
-        c.drawString(cl + 1.5*mm, ry + row_h * 0.35, label[:22])
-
-        for d in range(days):
-            x = cl + label_w + d * day_w
-            if checked.get((hi, d + 1)):
-                c.setFillColor(colors.HexColor("#e1f5ee"))
-                c.rect(x, ry, day_w, row_h, fill=1, stroke=0)
-                c.setFont(FONT_BODY, 5); c.setFillColor(colors.HexColor("#0F6E56"))
-                c.drawCentredString(x + day_w/2, ry + row_h*0.35, "v")
-            c.setStrokeColor(C_XLIGHT); c.setLineWidth(0.25)
-            c.rect(x, ry, day_w, row_h, fill=0, stroke=1)
-
-        c.setStrokeColor(C_LIGHT); c.setLineWidth(0.4)
-        c.line(cl, ry, cr, ry)
-
-    total_h = (num_h + 1) * row_h
-    c.setStrokeColor(C_DARK); c.setLineWidth(0.5)
-    c.rect(cl, ct - total_h, cr - cl, total_h, fill=0, stroke=1)
-    c.setLineWidth(0.6)
-    c.line(cl + label_w, ct - total_h, cl + label_w, ct)
-
-    sy = ct - total_h - 5 * mm
-    if sy > cb + 3 * mm:
-        c.setFont(FONT_BOLD, 6); c.setFillColor(C_MID)
-        c.drawString(cl, sy, "NOTIZEN / MONATSZIEL")
-        c.setStrokeColor(C_XLIGHT); c.setLineWidth(0.3)
-        c.line(cl, sy - 1*mm, cr, sy - 1*mm)
-        ny = sy - 5 * mm
-        while ny > cb:
-            _hline(c, cl, cr, ny, C_XLIGHT)
-            ny -= 5 * mm
-    c.save()
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 #  Generate all blank templates
 # ══════════════════════════════════════════════════════════════════════════════
 
 def generate_all(output_dir: str = "templates") -> None:
-    """Generates all five blank templates into *output_dir*."""
+    """Generates all four blank templates into *output_dir*."""
     os.makedirs(output_dir, exist_ok=True)
     make_tagesplan    (f"{output_dir}/01_tagesplan.pdf")
     make_wochenplan   (f"{output_dir}/02_wochenplan.pdf")
     make_checkliste   (f"{output_dir}/03_checkliste.pdf")
     make_notizseite   (f"{output_dir}/04_notizseite.pdf")
-    make_habit_tracker(f"{output_dir}/05_habit_tracker.pdf")
-    print(f"✓  5 Vorlagen erstellt in '{output_dir}/'")
+    print(f"✓  4 Vorlagen erstellt in '{output_dir}/'")
 
 
 if __name__ == "__main__":

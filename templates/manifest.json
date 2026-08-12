@@ -43,14 +43,6 @@
         { "id": "tags",      "type": "tagsField",  "left": 0.121, "top": 0.115, "right": 0.865, "bottom": 0.148 },
         { "id": "note_area", "type": "noteArea",   "left": 0.121, "top": 0.155, "right": 0.865, "bottom": 0.897 }
       ]
-    },
-    {
-      "type": "habit",
-      "displayName": "Habit Tracker",
-      "qrPayload": "noteleaf://habit/v1",
-      "zones": [
-        { "id": "habit_grid", "type": "habitGrid", "left": 0.121, "top": 0.082, "right": 0.940, "bottom": 0.850 }
-      ]
     }
   ]
 }
