@@ -4,9 +4,9 @@ Noteleaf – A5 Template Generator
 Generates print-ready A5 PDF templates for the Noteleaf system.
 
 Each template contains:
-  - Four black corner markers for perspective correction during scanning
-    (square markers, or circular crosshair "registration targets" for
-    templates that opt into the newer marker style — see `_draw_markers`)
+  - Four black circular crosshair "registration target" corner markers for
+    perspective correction during scanning (see `_draw_markers`; a square
+    marker style also exists for older printed sheets predating this one)
   - A QR code encoding the template type and version
   - A unique geometric type symbol (bottom-left) for secondary recognition
   - Structured content zones that the Noteleaf Nextcloud app processes with OCR
@@ -133,12 +133,13 @@ def _draw_registration_target(c: canvas.Canvas, cx: float, cy: float) -> None:
     c.circle(cx, cy, r_dot, fill=1, stroke=0)
 
 
-def _draw_markers(c: canvas.Canvas, style: str = "square", *,
+def _draw_markers(c: canvas.Canvas, style: str = "target", *,
                   page_w: float = W, page_h: float = H) -> None:
     """Draws the four corner registration markers.
 
-    style: "square" (current default, black 5×5 mm squares) or "target"
-    (circular crosshair registration targets) — see module docstring.
+    style: "target" (current default, circular crosshair registration
+    targets) or "square" (black 5×5 mm squares, the older style kept only
+    for reference) — see module docstring.
     """
     corners = [
         (MARGIN,                       MARGIN),
@@ -718,10 +719,6 @@ def make_meeting_notizen(path: str, *, topic: str = "", when: str = "",
     """
     Meeting notes A5 PDF. New template type, noteleaf://meeting/v1.
 
-    Uses the circular crosshair registration targets rather than square
-    markers — unlike Tagesplan/Wochenplan/Tagesplan-quer, this type has no
-    existing printed sheets to stay backward-compatible with.
-
     On scan, the notes area becomes a note and each filled action-item row
     becomes a task (checkbox title, "Wer" assignee, "Bis" due date).
 
@@ -736,7 +733,7 @@ def make_meeting_notizen(path: str, *, topic: str = "", when: str = "",
     action_items = action_items or []
 
     c = _new_canvas(path)
-    _draw_markers(c, "target")
+    _draw_markers(c)
     _draw_qr(c, _qr_payload("meeting"))
     _draw_type_symbol(c, "meeting")
     _draw_footer(c, "meeting")
@@ -850,7 +847,7 @@ def make_tagesplan_quer(path: str, date_str: str = "", *,
 
     Three equal-weight zones side by side — time / tasks / notes — matching
     the portrait Tagesplan's baseline visual language (grey header bar,
-    square corner markers, half-hour time grid), just splitting the day
+    crosshair corner markers, half-hour time grid), just splitting the day
     across two time sub-columns instead of squeezing everything into one
     narrow column.
 
@@ -869,7 +866,7 @@ def make_tagesplan_quer(path: str, date_str: str = "", *,
     c.setTitle("Noteleaf Template")
     c.setAuthor("Noteleaf")
 
-    _draw_markers(c, "square", page_w=lw, page_h=lh)
+    _draw_markers(c, page_w=lw, page_h=lh)
     _draw_qr(c, _qr_payload("daily-wide"), page_w=lw)
     _draw_type_symbol(c, "dailyWide")
     _draw_footer(c, "daily-wide", page_w=lw)
