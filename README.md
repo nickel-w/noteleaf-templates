@@ -13,7 +13,6 @@ Verbinden analoge Planung mit Nextcloud: ausdrucken, ausfüllen, einscannen.
 | `02_wochenplan.pdf`   | 7 Tagesspalten, Stunden-Raster 07:00–22:00 | `noteleaf://weekly/v1` |
 | `03_checkliste.pdf`   | 3 Kategoriegruppen mit je 5–6 Checkboxen | `noteleaf://checklist/v1` |
 | `04_notizseite.pdf`   | Punkt-Raster (Dot Grid), Titel- und Tag-Feld | `noteleaf://notes/v1` |
-| `05_habit_tracker.pdf`| 10 Gewohnheiten × 31 Tage, Streak-Notizbereich | `noteleaf://habit/v1` |
 
 > Ältere ausgedruckte Bögen mit dem historischen `nc-planner://…`-Schema
 > (Vorgängername der App) werden von der Noteleaf-App weiterhin erkannt –
