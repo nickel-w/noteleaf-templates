@@ -52,8 +52,17 @@ Jede Vorlage enthält drei maschinenlesbare Elemente:
 Vorlagentyp, QR-Payload und die Zonen-Grenzen jeder Vorlage sind in
 [`templates/manifest.json`](templates/manifest.json) deklariert. Diese Datei
 ist die gemeinsame Quelle der Wahrheit für dieses Repo und für die
-Nextcloud-App `noteleaf`, die daraus ihre Scan-Zonen-Registry generiert
+Nextcloud-App `noteleaf`, die daraus sowohl ihre Scan-Zonen-Registry als
+auch – für Zonen ohne Sonderfall – den PDF-Druck generisch ableitet
 (siehe Abschnitt „Weiterentwicklung" unten).
+
+Jede Zone hat einen `type` (`timeGrid`, `taskList`, `noteArea`,
+`titleField`, `tagsField`) und optional ein `renderer`-Feld, falls eine
+Zone dieses Typs abweichend vom Standard gerendert werden soll (z. B.
+`action_items` in `meeting`: `type: taskList`, aber
+`renderer: actionItems`, weil es eine Tabelle mit Wer/Bis-Spalten statt
+einer einfachen Checkbox-Liste ist). Fehlt `renderer`, entspricht er dem
+`type`.
 
 ---
 
@@ -122,10 +131,19 @@ pdfjam --nup 2x1 --a4paper templates/01_tagesplan.pdf -o tagesplan_a4.pdf
 
 ### Neue Vorlage hinzufügen
 
-1. Neuen Eintrag (Typ, `displayName`, `qrPayload`, Zonen) in `templates/manifest.json` ergänzen
+1. Neuen Eintrag (Typ, `displayName`, `qrPayload`, Zonen – ggf. mit
+   `renderer`, falls eine Zone abweichend von ihrem `type` gedruckt werden
+   soll) in `templates/manifest.json` ergänzen
 2. Funktion `make_meinevorlage()` in `scripts/generate_templates.py` ergänzen, Zeichnung visuell konsistent zu den Zonen-Grenzen aus dem Manifest halten
 3. PDF generieren (`python scripts/generate_templates.py`) und zusammen mit dem Manifest in `templates/` committen
-4. Im **`noteleaf`**-Repo: Submodule-Pointer auf den neuen Commit aktualisieren (`git submodule update --remote resources/noteleaf-templates`) und `composer run generate-registry` ausführen, um `lib/Service/Scan/ScanTemplateRegistry.php` neu aus dem Manifest zu generieren (Details siehe README dort)
+4. **Ab hier automatisch:** `.github/workflows/template-sync.yml` im
+   **`noteleaf`**-Repo übernimmt den Submodule-Bump und den
+   Registry-Codegen von selbst (täglich, per PR). Falls die neue Vorlage
+   nur bereits unterstützte Zonen-`renderer` verwendet (`noteArea`,
+   `titleField`, `tagsField`, `taskList`, `actionItems`), funktioniert dort
+   auch der PDF-Druck ohne weitere Code-Änderung. Nur bei wirklich neuem
+   Layout (z. B. einem neuen Zeitraster-Typ) braucht `PdfService.php` im
+   `noteleaf`-Repo noch eine eigene Ergänzung – siehe README dort.
 
 ### Vorlagen-Versionen
 

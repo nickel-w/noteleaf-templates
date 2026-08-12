@@ -421,10 +421,10 @@ def make_tagesplan(path: str, date_str: str = "", *,
     tasks  = tasks  or []
 
     c = _new_canvas(path)
-    _draw_markers(c)
     _draw_qr(c, _qr_payload("daily"))
     _draw_type_symbol(c, "daily")
     _draw_footer(c, "daily")
+    _draw_markers(c)
     top = _header_bar(c, "Tagesplan", date_str or "________________")
 
     cl, cs, c2, _ = _content_cols()
@@ -537,10 +537,10 @@ def make_wochenplan(path: str, week_str: str = "", *,
     """
     events = events or []
     c = _new_canvas(path)
-    _draw_markers(c)
     _draw_qr(c, _qr_payload("weekly"))
     _draw_type_symbol(c, "weekly")
     _draw_footer(c, "weekly")
+    _draw_markers(c)
     top = _header_bar(c, "Wochenplan", week_str or "KW ____")
 
     cl = MARGIN + MARKER_SIZE + 3 * mm
@@ -611,10 +611,10 @@ def make_checkliste(path: str, *,
     groups = groups or default
 
     c = _new_canvas(path)
-    _draw_markers(c)
     _draw_qr(c, _qr_payload("checklist"))
     _draw_type_symbol(c, "checklist")
     _draw_footer(c, "checklist")
+    _draw_markers(c)
     top = _header_bar(c, "Checkliste", "________________")
 
     cl, _, _, cr = _content_cols()
@@ -671,10 +671,10 @@ def make_notizseite(path: str, *, title: str = "", tags: str = "") -> None:
     tags  : pre-filled tags text
     """
     c = _new_canvas(path)
-    _draw_markers(c)
     _draw_qr(c, _qr_payload("notes"))
     _draw_type_symbol(c, "notes")
     _draw_footer(c, "notes")
+    _draw_markers(c)
     top = _header_bar(c, "Notizen", "________________")
 
     cl, _, _, cr = _content_cols()
@@ -733,10 +733,10 @@ def make_meeting_notizen(path: str, *, topic: str = "", when: str = "",
     action_items = action_items or []
 
     c = _new_canvas(path)
-    _draw_markers(c)
     _draw_qr(c, _qr_payload("meeting"))
     _draw_type_symbol(c, "meeting")
     _draw_footer(c, "meeting")
+    _draw_markers(c)
 
     cl = MARGIN + MARKER_SIZE + 3 * mm
     cr = W - MARGIN - MARKER_SIZE - 3 * mm
@@ -866,10 +866,10 @@ def make_tagesplan_quer(path: str, date_str: str = "", *,
     c.setTitle("Noteleaf Template")
     c.setAuthor("Noteleaf")
 
-    _draw_markers(c, page_w=lw, page_h=lh)
     _draw_qr(c, _qr_payload("daily-wide"), page_w=lw)
     _draw_type_symbol(c, "dailyWide")
     _draw_footer(c, "daily-wide", page_w=lw)
+    _draw_markers(c, page_w=lw, page_h=lh)
     top = _header_bar(c, "Tagesplan", date_str or "________________",
                       page_w=lw, page_h=lh)
 
