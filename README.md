@@ -52,8 +52,17 @@ Jede Vorlage enthält drei maschinenlesbare Elemente:
 Vorlagentyp, QR-Payload und die Zonen-Grenzen jeder Vorlage sind in
 [`templates/manifest.json`](templates/manifest.json) deklariert. Diese Datei
 ist die gemeinsame Quelle der Wahrheit für dieses Repo und für die
-Nextcloud-App `noteleaf`, die daraus ihre Scan-Zonen-Registry generiert
+Nextcloud-App `noteleaf`, die daraus sowohl ihre Scan-Zonen-Registry als
+auch – für Zonen ohne Sonderfall – den PDF-Druck generisch ableitet
 (siehe Abschnitt „Weiterentwicklung" unten).
+
+Jede Zone hat einen `type` (`timeGrid`, `taskList`, `noteArea`,
+`titleField`, `tagsField`) und optional ein `renderer`-Feld, falls eine
+Zone dieses Typs abweichend vom Standard gerendert werden soll (z. B.
+`action_items` in `meeting`: `type: taskList`, aber
+`renderer: actionItems`, weil es eine Tabelle mit Wer/Bis-Spalten statt
+einer einfachen Checkbox-Liste ist). Fehlt `renderer`, entspricht er dem
+`type`.
 
 ---
 

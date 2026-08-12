@@ -32,7 +32,7 @@
       "qrPayload": "noteleaf://meeting/v1",
       "zones": [
         { "id": "note_area", "type": "noteArea", "left": 0.121, "top": 0.248, "right": 0.878, "bottom": 0.569 },
-        { "id": "action_items", "type": "taskList", "left": 0.121, "top": 0.583, "right": 0.878, "bottom": 0.824 }
+        { "id": "action_items", "type": "taskList", "renderer": "actionItems", "left": 0.121, "top": 0.583, "right": 0.878, "bottom": 0.824 }
       ]
     },
     {
