@@ -20,12 +20,12 @@ Verbinden analoge Planung mit Nextcloud: ausdrucken, ausfüllen, einscannen.
 > (Vorgängername der App) werden von der Noteleaf-App weiterhin erkannt –
 > siehe `ScanTemplateRegistry::fromQrPayload()` im `noteleaf`-Repo.
 
-> `05_meeting_notizen.pdf` verwendet als erste Vorlage kreisförmige
-> Fadenkreuz-Registrierungstargets statt der schwarzen Eck-Quadrate (siehe
-> `_draw_markers(..., style="target")` in `generate_templates.py`). Die
-> anderen Vorlagen — inklusive der neuen `06_tagesplan_quer.pdf` — behalten
-> die quadratischen Marker, um mit bereits ausgedruckten Bögen kompatibel
-> zu bleiben.
+> Alle Vorlagen verwenden kreisförmige Fadenkreuz-Registrierungstargets statt
+> der älteren schwarzen Eck-Quadrate (siehe `_draw_markers()` in
+> `generate_templates.py`, Standard-Stil `"target"`). Der quadratische Stil
+> existiert dort weiterhin als Option (`style="square"`), damit historische
+> Ausdrucke mit dem alten Marker-Layout kompatibel bleiben – neu erzeugte
+> Vorlagen nutzen ihn aber nicht mehr.
 
 Alle Vorlagen: **A5 (148 × 210 mm)**, schwarz-weiß druckbar.
 
@@ -45,7 +45,7 @@ Jede Vorlage enthält drei maschinenlesbare Elemente:
 └─────────────────────────────────────────┘
 ```
 
-- **4 schwarze Quadrate** in den Ecken (Ausrichtungsmarker, 5×5 mm)
+- **4 kreisförmige Fadenkreuz-Marker** in den Ecken (Ausrichtungsmarker, 5×5 mm Box)
 - **QR-Code** rechts unten (18×18 mm) – kodiert Vorlagentyp und Version
 - **Strukturierte Zonen** – jede Zone wird von der Scan-Verarbeitung in der Nextcloud-App (`noteleaf`) separat ausgewertet
 
