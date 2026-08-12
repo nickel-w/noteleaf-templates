@@ -5,15 +5,19 @@ Generates print-ready A5 PDF templates for the Noteleaf system.
 
 Each template contains:
   - Four black corner markers for perspective correction during scanning
+    (square markers, or circular crosshair "registration targets" for
+    templates that opt into the newer marker style — see `_draw_markers`)
   - A QR code encoding the template type and version
   - A unique geometric type symbol (bottom-left) for secondary recognition
   - Structured content zones that the Noteleaf Nextcloud app processes with OCR
 
 Symbol legend (bottom-left box, 18×18 mm):
-  daily     → clock face (ring + 12 ticks + centre dot)
-  weekly    → 7 vertical bars (Sa/So slightly shorter)
-  checklist → bold checkmark
-  notes     → 5×5 dot grid
+  daily      → clock face (ring + 12 ticks + centre dot)
+  weekly     → 7 vertical bars (Sa/So slightly shorter)
+  checklist  → bold checkmark
+  notes      → 5×5 dot grid
+  meeting    → 4 horizontal strokes (last one shorter), reads as notes lines
+  dailyWide  → clock face + 3 small footer blocks (time / tasks / notes columns)
 
 Usage
 -----
@@ -49,7 +53,7 @@ import os
 from typing import Any
 
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import A5
+from reportlab.lib.pagesizes import A5, landscape
 from reportlab.lib.units import mm
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
@@ -113,26 +117,53 @@ def _qr_image(data: str) -> ImageReader:
     return ImageReader(buf)
 
 
-def _draw_markers(c: canvas.Canvas) -> None:
+def _draw_registration_target(c: canvas.Canvas, cx: float, cy: float) -> None:
+    """Circular crosshair 'registration target' marker (newer marker style),
+    centred at (cx, cy), sized to fit the same MARKER_SIZE box as the square
+    markers."""
+    r_outer = MARKER_SIZE / 2 * 0.86
+    r_dot   = MARKER_SIZE / 2 * 0.26
+    c.setStrokeColor(C_BLACK)
+    c.setLineWidth(0.35 * mm)
+    c.circle(cx, cy, r_outer, fill=0, stroke=1)
+    c.setLineWidth(0.25 * mm)
+    c.line(cx, cy - MARKER_SIZE / 2, cx, cy + MARKER_SIZE / 2)
+    c.line(cx - MARKER_SIZE / 2, cy, cx + MARKER_SIZE / 2, cy)
     c.setFillColor(C_BLACK)
-    for x, y in [
-        (MARGIN,                    MARGIN),
-        (W - MARGIN - MARKER_SIZE,  MARGIN),
-        (MARGIN,                    H - MARGIN - MARKER_SIZE),
-        (W - MARGIN - MARKER_SIZE,  H - MARGIN - MARKER_SIZE),
-    ]:
-        c.rect(x, y, MARKER_SIZE, MARKER_SIZE, fill=1, stroke=0)
+    c.circle(cx, cy, r_dot, fill=1, stroke=0)
 
 
-def _draw_qr(c: canvas.Canvas, payload: str) -> None:
+def _draw_markers(c: canvas.Canvas, style: str = "square", *,
+                  page_w: float = W, page_h: float = H) -> None:
+    """Draws the four corner registration markers.
+
+    style: "square" (current default, black 5×5 mm squares) or "target"
+    (circular crosshair registration targets) — see module docstring.
+    """
+    corners = [
+        (MARGIN,                       MARGIN),
+        (page_w - MARGIN - MARKER_SIZE, MARGIN),
+        (MARGIN,                       page_h - MARGIN - MARKER_SIZE),
+        (page_w - MARGIN - MARKER_SIZE, page_h - MARGIN - MARKER_SIZE),
+    ]
+    if style == "target":
+        for x, y in corners:
+            _draw_registration_target(c, x + MARKER_SIZE / 2, y + MARKER_SIZE / 2)
+    else:
+        c.setFillColor(C_BLACK)
+        for x, y in corners:
+            c.rect(x, y, MARKER_SIZE, MARKER_SIZE, fill=1, stroke=0)
+
+
+def _draw_qr(c: canvas.Canvas, payload: str, *, page_w: float = W) -> None:
     c.drawImage(_qr_image(payload),
-                W - MARGIN - QR_SIZE, MARGIN, QR_SIZE, QR_SIZE)
+                page_w - MARGIN - QR_SIZE, MARGIN, QR_SIZE, QR_SIZE)
 
 
-def _draw_footer(c: canvas.Canvas, template_id: str) -> None:
+def _draw_footer(c: canvas.Canvas, template_id: str, *, page_w: float = W) -> None:
     c.setFont(FONT_BODY, 5)
     c.setFillColor(C_LIGHT)
-    c.drawCentredString(W / 2, MARGIN + 1 * mm,
+    c.drawCentredString(page_w / 2, MARGIN + 1 * mm,
                         f"{_qr_payload(template_id)} · A5")
 
 
@@ -152,6 +183,10 @@ def _draw_type_symbol(c: canvas.Canvas, template_type: str) -> None:
     weekly    : 7 vertical bars (weekday bars full-height, weekend bars shorter)
     checklist : bold L-shaped checkmark
     notes     : 5 × 5 dot grid (matches printed dot-grid pattern)
+    meeting   : 4 horizontal strokes, last one shorter (reads as notes lines,
+                not a task list)
+    dailyWide : small clock face + 3 footer blocks (time / tasks / notes
+                columns), signalling the three-column landscape layout
     """
     sx = MARGIN           # symbol box origin x (same x as left marker)
     sy = MARGIN           # symbol box origin y (same y as QR code)
@@ -254,12 +289,50 @@ def _draw_type_symbol(c: canvas.Canvas, template_type: str) -> None:
                 dy = iy + row * gy
                 c.circle(dx, dy, r, fill=1, stroke=0)
 
+    elif template_type == "meeting":
+        # 4 horizontal strokes, last one shorter — reads as notes lines
+        lw = 1.1 * mm
+        c.setLineWidth(lw)
+        c.setLineCap(2)   # square caps
+        fracs_y = [0.85, 0.62, 0.39, 0.16]
+        fracs_x2 = [1.0, 1.0, 0.72, 0.89]
+        for fy, fx2 in zip(fracs_y, fracs_x2):
+            yy = iy + ih * fy
+            c.line(ix, yy, ix + iw * fx2, yy)
+        c.setLineCap(0)
 
-def _header_bar(c: canvas.Canvas, title: str, subtitle: str = "") -> float:
+    elif template_type == "dailyWide":
+        # Small clock face (top) + 3 footer blocks (time / tasks / notes)
+        r_outer = iw * 0.30
+        ccx, ccy = ix + iw * 0.5, iy + ih * 0.62
+        c.setLineWidth(0.9)
+        c.circle(ccx, ccy, r_outer, fill=0, stroke=1)
+        for i in range(4):
+            angle = math.radians(90 - i * 90)
+            cos_a, sin_a = math.cos(angle), math.sin(angle)
+            r_in = r_outer * 0.6
+            c.setLineWidth(1.0)
+            c.line(ccx + r_in * cos_a, ccy + r_in * sin_a,
+                   ccx + r_outer * cos_a, ccy + r_outer * sin_a)
+        c.circle(ccx, ccy, 0.9 * mm, fill=1, stroke=0)
+        c.line(ccx, ccy, ccx - r_outer * 0.5, ccy - r_outer * 0.3)
+
+        n     = 3
+        gap   = 0.9 * mm
+        block_w = (iw - gap * (n - 1)) / n
+        block_h = ih * 0.2
+        by = iy
+        for i in range(n):
+            bx = ix + i * (block_w + gap)
+            c.rect(bx, by, block_w, block_h, fill=1, stroke=0)
+
+
+def _header_bar(c: canvas.Canvas, title: str, subtitle: str = "", *,
+                page_w: float = W, page_h: float = H) -> float:
     """Draws header; returns bottom y of header (= top of content area)."""
     bx = MARGIN + MARKER_SIZE + 3 * mm
-    bw = W - 2 * (MARGIN + MARKER_SIZE + 3 * mm)
-    by = H - MARGIN - MARKER_SIZE - 2 * mm - 8 * mm
+    bw = page_w - 2 * (MARGIN + MARKER_SIZE + 3 * mm)
+    by = page_h - MARGIN - MARKER_SIZE - 2 * mm - 8 * mm
     c.setFillColor(C_HEADER_BG)
     c.rect(bx, by, bw, 8 * mm, fill=1, stroke=0)
     c.setFillColor(C_BLACK)
@@ -353,7 +426,11 @@ def make_tagesplan(path: str, date_str: str = "", *,
     _draw_footer(c, "daily")
     top = _header_bar(c, "Tagesplan", date_str or "________________")
 
-    cl, cs, c2, cr = _content_cols()
+    cl, cs, c2, _ = _content_cols()
+    # Task list & notes column run to the header bar's right edge (130 mm)
+    # rather than stopping short for the QR carve-out — both zones end well
+    # above BOTTOM_SAFE, so there is no overlap with the QR code.
+    cr_wide  = W - MARGIN - MARKER_SIZE - 3 * mm
     ct       = top - 3 * mm
     row_h    = 5.5 * mm
     time_w   = 9 * mm
@@ -423,20 +500,22 @@ def make_tagesplan(path: str, date_str: str = "", *,
             c.drawString(c2 + cb_size + 1.5*mm, ry - cb_size + 0.3*mm,
                          str(task.get("title", ""))[:30])
         else:
-            _hline(c, c2 + cb_size + 1.5*mm, cr, ry - cb_size + 0.5*mm, C_XLIGHT)
-        _hline(c, c2, cr, ry - task_row + 0.3*mm, C_XLIGHT, 0.15)
+            _hline(c, c2 + cb_size + 1.5*mm, cr_wide, ry - cb_size + 0.5*mm, C_XLIGHT)
+        _hline(c, c2, cr_wide, ry - task_row + 0.3*mm, C_XLIGHT, 0.15)
 
-    # ── Right: notes ─────────────────────────────────────────────────────────
+    # ── Right: notes (light dot grid, borderless) ────────────────────────────
     nt = ty - num_tasks * task_row - 3 * mm
     _section_label(c, c2, nt, "Notizen")
-    ny = nt - 4 * mm
-    while ny - 5*mm > BOTTOM_SAFE:
-        _hline(c, c2, cr, ny - 5*mm + 0.3*mm, C_XLIGHT)
-        ny -= 5 * mm
-
-    c.setStrokeColor(C_LIGHT)
-    c.setLineWidth(0.4)
-    c.rect(c2, ny, cr - c2, ct - 4*mm - ny, fill=0, stroke=1)
+    notes_top = nt - 4 * mm
+    dot_gap   = 5 * mm
+    c.setFillColor(C_LIGHT)
+    x = c2
+    while x <= cr_wide:
+        y = BOTTOM_SAFE
+        while y <= notes_top:
+            c.circle(x, y, 0.4*mm, fill=1, stroke=0)
+            y += dot_gap
+        x += dot_gap
     c.save()
 
 
@@ -630,17 +709,266 @@ def make_notizseite(path: str, *, title: str = "", tags: str = "") -> None:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Template 5 – Meeting-Notizen
+# ══════════════════════════════════════════════════════════════════════════════
+
+def make_meeting_notizen(path: str, *, topic: str = "", when: str = "",
+                         participants: str = "",
+                         action_items: list[dict] | None = None) -> None:
+    """
+    Meeting notes A5 PDF. New template type, noteleaf://meeting/v1.
+
+    Uses the circular crosshair registration targets rather than square
+    markers — unlike Tagesplan/Wochenplan/Tagesplan-quer, this type has no
+    existing printed sheets to stay backward-compatible with.
+
+    On scan, the notes area becomes a note and each filled action-item row
+    becomes a task (checkbox title, "Wer" assignee, "Bis" due date).
+
+    Parameters
+    ----------
+    path          : output file path
+    topic         : meeting topic ("Thema")
+    when          : date/time header field, e.g. "11.04.2026 · 09:00-09:30"
+    participants  : "Teilnehmer" field
+    action_items  : list of {"title": str, "who": str, "due": str, "completed": bool}
+    """
+    action_items = action_items or []
+
+    c = _new_canvas(path)
+    _draw_markers(c, "target")
+    _draw_qr(c, _qr_payload("meeting"))
+    _draw_type_symbol(c, "meeting")
+    _draw_footer(c, "meeting")
+
+    cl = MARGIN + MARKER_SIZE + 3 * mm
+    cr = W - MARGIN - MARKER_SIZE - 3 * mm
+    y  = H - MARGIN - MARKER_SIZE - 2 * mm - 6 * mm
+
+    c.setFont(FONT_BOLD, 15)
+    c.setFillColor(C_BLACK)
+    c.drawString(cl, y, "Meeting")
+    c.setFont(FONT_BODY, 7)
+    c.setFillColor(C_DARK if when else C_MID)
+    c.drawRightString(cr, y + 0.8 * mm, when or "Datum · Uhrzeit")
+    c.setStrokeColor(C_BLACK)
+    c.setLineWidth(0.3)
+    c.line(cr - 44 * mm, y - 0.8 * mm, cr, y - 0.8 * mm)
+
+    y -= 8 * mm
+    for label, value in [("Thema", topic), ("Teilnehmer", participants)]:
+        c.setFont(FONT_BODY, 7)
+        c.setFillColor(C_DARK if value else C_MID)
+        c.drawString(cl, y, value or label)
+        c.setStrokeColor(C_BLACK)
+        c.setLineWidth(0.3)
+        c.line(cl, y - 1 * mm, cr, y - 1 * mm)
+        y -= 7 * mm
+
+    # ── Fixed-height action items block, anchored above BOTTOM_SAFE ─────────
+    action_rows      = 4
+    action_row_h     = 9.5 * mm
+    action_hdr_h     = 4.5 * mm
+    action_label_h   = 8 * mm
+    action_block_h   = action_label_h + action_hdr_h + action_rows * action_row_h
+    ai_top           = BOTTOM_SAFE + action_block_h
+
+    col_cb_w  = 7 * mm
+    col_who_w = 24 * mm
+    col_due_w = 18 * mm
+    who_x     = cr - col_who_w - col_due_w
+    due_x     = cr - col_due_w
+
+    c.setFont(FONT_BODY, 7)
+    c.setFillColor(C_BLACK)
+    c.drawString(cl, ai_top - 4 * mm, "ACTION ITEMS")
+
+    hdr_y = ai_top - action_label_h
+    c.setFont(FONT_BODY, 5.5)
+    c.setFillColor(C_MID)
+    c.drawString(cl + col_cb_w, hdr_y, "WAS")
+    c.drawString(who_x + 1 * mm, hdr_y, "WER")
+    c.drawString(due_x + 1 * mm, hdr_y, "BIS")
+
+    row_top = hdr_y - action_hdr_h + 2 * mm
+    c.setStrokeColor(C_BLACK)
+    c.setLineWidth(0.3)
+    c.line(cl, row_top, cr, row_top)
+
+    cb_size = 4.5 * mm
+    for i in range(action_rows):
+        item      = action_items[i] if i < len(action_items) else None
+        done      = bool(item.get("completed", False)) if item else False
+        row_bot   = row_top - action_row_h
+        _checkbox(c, cl + 1 * mm, row_top - action_row_h / 2 - cb_size / 2,
+                 size=cb_size, checked=done)
+        if item:
+            c.setFont(FONT_BODY, 7)
+            c.setFillColor(C_MID if done else C_DARK)
+            c.drawString(cl + col_cb_w + 1 * mm, row_top - action_row_h / 2 - 1 * mm,
+                        str(item.get("title", ""))[:22])
+            c.drawString(who_x + 1 * mm, row_top - action_row_h / 2 - 1 * mm,
+                        str(item.get("who", ""))[:9])
+            c.drawString(due_x + 1 * mm, row_top - action_row_h / 2 - 1 * mm,
+                        str(item.get("due", ""))[:7])
+        c.setStrokeColor(C_BLACK)
+        c.setLineWidth(0.25)
+        c.line(who_x, row_bot, who_x, row_top)
+        c.line(due_x, row_bot, due_x, row_top)
+        c.line(cl, row_bot, cr, row_bot)
+        row_top = row_bot
+
+    # ── Notes (dot grid, fills the space above the action items block) ──────
+    y -= 2 * mm
+    c.setFont(FONT_BODY, 7)
+    c.setFillColor(C_BLACK)
+    c.drawString(cl, y, "NOTIZEN")
+    notes_top    = y - 5 * mm
+    notes_bottom = ai_top + 3 * mm
+    dot_gap = 5 * mm
+    c.setFillColor(C_LIGHT)
+    x = cl
+    while x <= cr:
+        yy = notes_bottom
+        while yy <= notes_top:
+            c.circle(x, yy, 0.4 * mm, fill=1, stroke=0)
+            yy += dot_gap
+        x += dot_gap
+
+    c.save()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Template 6 – Tagesplan quer
+# ══════════════════════════════════════════════════════════════════════════════
+
+def make_tagesplan_quer(path: str, date_str: str = "", *,
+                        events: list[dict] | None = None,
+                        tasks:  list[dict] | None = None) -> None:
+    """
+    Daily planner, A5 landscape. New template type, noteleaf://daily-wide/v1.
+
+    Three equal-weight zones side by side — time / tasks / notes — matching
+    the portrait Tagesplan's baseline visual language (grey header bar,
+    square corner markers, half-hour time grid), just splitting the day
+    across two time sub-columns instead of squeezing everything into one
+    narrow column.
+
+    Parameters
+    ----------
+    path      : output file path
+    date_str  : header date label
+    events    : list of {"time": "HH:MM", "title": str}
+    tasks     : list of {"title": str, "completed": bool}
+    """
+    events = events or []
+    tasks  = tasks  or []
+
+    lw, lh = landscape(A5)
+    c = canvas.Canvas(path, pagesize=(lw, lh))
+    c.setTitle("Noteleaf Template")
+    c.setAuthor("Noteleaf")
+
+    _draw_markers(c, "square", page_w=lw, page_h=lh)
+    _draw_qr(c, _qr_payload("daily-wide"), page_w=lw)
+    _draw_type_symbol(c, "dailyWide")
+    _draw_footer(c, "daily-wide", page_w=lw)
+    top = _header_bar(c, "Tagesplan", date_str or "________________",
+                      page_w=lw, page_h=lh)
+
+    cl = MARGIN + MARKER_SIZE + 3 * mm
+    cr = lw - MARGIN - MARKER_SIZE - 3 * mm
+    ct = top - 3 * mm
+    gap = 6 * mm
+    col_w = (cr - cl - 2 * gap) / 3
+    time_col_l = cl
+    task_col_l = cl + col_w + gap
+    note_col_l = cl + 2 * (col_w + gap)
+
+    # ── Time, split across two half-hour sub-columns ─────────────────────────
+    _section_label(c, time_col_l, ct, "Zeitplan")
+    row_h = 5.5 * mm
+    y0    = ct - 4 * mm
+
+    all_slots     = [f"{h:02d}:{m:02d}" for h in range(5, 24) for m in (0, 30)]
+    rows_per_col  = max(1, int((y0 - BOTTOM_SAFE) // row_h))
+    n_slots       = min(len(all_slots), rows_per_col * 2)
+    half          = (n_slots + 1) // 2
+    half_a, half_b = all_slots[:half], all_slots[half:n_slots]
+
+    sub_gap = 4 * mm
+    sub_w   = (col_w - sub_gap) / 2
+    grid_bottom = y0 - half * row_h
+
+    for sub_l, slots in [(time_col_l, half_a), (time_col_l + sub_w + sub_gap, half_b)]:
+        for i, slot in enumerate(slots):
+            ry = y0 - i * row_h
+            if i % 2 == 0:
+                c.setFillColor(colors.HexColor("#fafafa"))
+                c.rect(sub_l, ry - row_h + 0.5 * mm, sub_w, row_h - 0.5 * mm, fill=1, stroke=0)
+            c.setFont(FONT_BODY, 6)
+            c.setFillColor(C_MID)
+            c.drawString(sub_l, ry - row_h + 1.8 * mm, slot)
+            _hline(c, sub_l, sub_l + sub_w, ry - row_h + 0.5 * mm)
+        box_h = len(slots) * row_h
+        c.setStrokeColor(C_LIGHT)
+        c.setLineWidth(0.4)
+        c.rect(sub_l, y0 - box_h, sub_w, box_h, fill=0, stroke=1)
+
+    # ── Tasks ─────────────────────────────────────────────────────────────────
+    _section_label(c, task_col_l, ct, "Aufgaben")
+    ty        = ct - 4 * mm
+    task_row  = 7.5 * mm
+    cb_size   = 3.2 * mm
+    num_tasks = 11
+
+    for i in range(num_tasks):
+        ry = ty - i * task_row
+        if ry - task_row < grid_bottom:
+            break
+        task = tasks[i] if i < len(tasks) else None
+        done = bool(task.get("completed", False)) if task else False
+        _checkbox(c, task_col_l, ry - cb_size, size=cb_size, checked=done)
+        if task:
+            c.setFont(FONT_BODY, 7)
+            c.setFillColor(C_MID if done else C_DARK)
+            c.drawString(task_col_l + cb_size + 1.5 * mm, ry - cb_size + 0.3 * mm,
+                        str(task.get("title", ""))[:26])
+        else:
+            _hline(c, task_col_l + cb_size + 1.5 * mm, task_col_l + col_w,
+                  ry - cb_size + 0.5 * mm, C_XLIGHT)
+        _hline(c, task_col_l, task_col_l + col_w, ry - task_row + 0.3 * mm, C_XLIGHT, 0.15)
+
+    # ── Notes (dot grid) ──────────────────────────────────────────────────────
+    _section_label(c, note_col_l, ct, "Notizen")
+    notes_top = ct - 4 * mm
+    dot_gap   = 5 * mm
+    c.setFillColor(C_LIGHT)
+    x = note_col_l
+    while x <= note_col_l + col_w:
+        y = grid_bottom
+        while y <= notes_top:
+            c.circle(x, y, 0.4 * mm, fill=1, stroke=0)
+            y += dot_gap
+        x += dot_gap
+
+    c.save()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Generate all blank templates
 # ══════════════════════════════════════════════════════════════════════════════
 
 def generate_all(output_dir: str = "templates") -> None:
-    """Generates all four blank templates into *output_dir*."""
+    """Generates all six blank templates into *output_dir*."""
     os.makedirs(output_dir, exist_ok=True)
-    make_tagesplan    (f"{output_dir}/01_tagesplan.pdf")
-    make_wochenplan   (f"{output_dir}/02_wochenplan.pdf")
-    make_checkliste   (f"{output_dir}/03_checkliste.pdf")
-    make_notizseite   (f"{output_dir}/04_notizseite.pdf")
-    print(f"✓  4 Vorlagen erstellt in '{output_dir}/'")
+    make_tagesplan        (f"{output_dir}/01_tagesplan.pdf")
+    make_wochenplan       (f"{output_dir}/02_wochenplan.pdf")
+    make_checkliste       (f"{output_dir}/03_checkliste.pdf")
+    make_notizseite       (f"{output_dir}/04_notizseite.pdf")
+    make_meeting_notizen  (f"{output_dir}/05_meeting_notizen.pdf")
+    make_tagesplan_quer   (f"{output_dir}/06_tagesplan_quer.pdf")
+    print(f"✓  6 Vorlagen erstellt in '{output_dir}/'")
 
 
 if __name__ == "__main__":

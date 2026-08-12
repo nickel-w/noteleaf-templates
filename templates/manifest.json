@@ -14,8 +14,8 @@
       "qrPayload": "noteleaf://daily/v1",
       "zones": [
         { "id": "time_grid", "type": "timeGrid", "left": 0.121, "top": 0.082, "right": 0.498, "bottom": 0.897 },
-        { "id": "task_list", "type": "taskList", "left": 0.511, "top": 0.082, "right": 0.865, "bottom": 0.337 },
-        { "id": "note_area", "type": "noteArea", "left": 0.511, "top": 0.344, "right": 0.865, "bottom": 0.894 }
+        { "id": "task_list", "type": "taskList", "left": 0.511, "top": 0.082, "right": 0.878, "bottom": 0.337 },
+        { "id": "note_area", "type": "noteArea", "left": 0.511, "top": 0.344, "right": 0.878, "bottom": 0.824 }
       ]
     },
     {
@@ -24,6 +24,25 @@
       "qrPayload": "noteleaf://weekly/v1",
       "zones": [
         { "id": "week_grid", "type": "timeGrid", "left": 0.121, "top": 0.095, "right": 0.940, "bottom": 0.897 }
+      ]
+    },
+    {
+      "type": "meeting",
+      "displayName": "Meeting-Notizen",
+      "qrPayload": "noteleaf://meeting/v1",
+      "zones": [
+        { "id": "note_area", "type": "noteArea", "left": 0.121, "top": 0.248, "right": 0.878, "bottom": 0.569 },
+        { "id": "action_items", "type": "taskList", "left": 0.121, "top": 0.583, "right": 0.878, "bottom": 0.824 }
+      ]
+    },
+    {
+      "type": "daily-wide",
+      "displayName": "Tagesplan quer",
+      "qrPayload": "noteleaf://daily-wide/v1",
+      "zones": [
+        { "id": "time_grid", "type": "timeGrid", "left": 0.086, "top": 0.216, "right": 0.343, "bottom": 0.736 },
+        { "id": "task_list", "type": "taskList", "left": 0.371, "top": 0.216, "right": 0.629, "bottom": 0.736 },
+        { "id": "note_area", "type": "noteArea", "left": 0.657, "top": 0.216, "right": 0.914, "bottom": 0.736 }
       ]
     },
     {
