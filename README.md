@@ -9,14 +9,23 @@ Verbinden analoge Planung mit Nextcloud: ausdrucken, ausfüllen, einscannen.
 
 | Datei | Beschreibung | QR-Code |
 |-------|-------------|---------|
-| `01_tagesplan.pdf`    | Stunden-Raster 06:00–21:30, Aufgaben-Checkboxen, Notizbereich | `noteleaf://daily/v1` |
-| `02_wochenplan.pdf`   | 7 Tagesspalten, Stunden-Raster 07:00–22:00 | `noteleaf://weekly/v1` |
-| `03_checkliste.pdf`   | 3 Kategoriegruppen mit je 5–6 Checkboxen | `noteleaf://checklist/v1` |
-| `04_notizseite.pdf`   | Punkt-Raster (Dot Grid), Titel- und Tag-Feld | `noteleaf://notes/v1` |
+| `01_tagesplan.pdf`        | Stunden-Raster 06:00–21:30, Aufgaben-Checkboxen, Notizbereich (Punkt-Raster, randlos) | `noteleaf://daily/v1` |
+| `02_wochenplan.pdf`       | 7 Tagesspalten, Stunden-Raster 07:00–22:00 | `noteleaf://weekly/v1` |
+| `03_checkliste.pdf`       | 3 Kategoriegruppen mit je 5–6 Checkboxen | `noteleaf://checklist/v1` |
+| `04_notizseite.pdf`       | Punkt-Raster (Dot Grid), Titel- und Tag-Feld | `noteleaf://notes/v1` |
+| `05_meeting_notizen.pdf`  | Kopf (Thema/Teilnehmer), Notizbereich, Action Items (Kästchen, Wer, Bis) | `noteleaf://meeting/v1` |
+| `06_tagesplan_quer.pdf`   | A5 quer, Tag auf zwei Zeitsäulen à 11mm, Aufgaben, Notizen | `noteleaf://daily-wide/v1` |
 
 > Ältere ausgedruckte Bögen mit dem historischen `nc-planner://…`-Schema
 > (Vorgängername der App) werden von der Noteleaf-App weiterhin erkannt –
 > siehe `ScanTemplateRegistry::fromQrPayload()` im `noteleaf`-Repo.
+
+> `05_meeting_notizen.pdf` verwendet als erste Vorlage kreisförmige
+> Fadenkreuz-Registrierungstargets statt der schwarzen Eck-Quadrate (siehe
+> `_draw_markers(..., style="target")` in `generate_templates.py`). Die
+> anderen Vorlagen — inklusive der neuen `06_tagesplan_quer.pdf` — behalten
+> die quadratischen Marker, um mit bereits ausgedruckten Bögen kompatibel
+> zu bleiben.
 
 Alle Vorlagen: **A5 (148 × 210 mm)**, schwarz-weiß druckbar.
 
