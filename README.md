@@ -131,10 +131,19 @@ pdfjam --nup 2x1 --a4paper templates/01_tagesplan.pdf -o tagesplan_a4.pdf
 
 ### Neue Vorlage hinzufügen
 
-1. Neuen Eintrag (Typ, `displayName`, `qrPayload`, Zonen) in `templates/manifest.json` ergänzen
+1. Neuen Eintrag (Typ, `displayName`, `qrPayload`, Zonen – ggf. mit
+   `renderer`, falls eine Zone abweichend von ihrem `type` gedruckt werden
+   soll) in `templates/manifest.json` ergänzen
 2. Funktion `make_meinevorlage()` in `scripts/generate_templates.py` ergänzen, Zeichnung visuell konsistent zu den Zonen-Grenzen aus dem Manifest halten
 3. PDF generieren (`python scripts/generate_templates.py`) und zusammen mit dem Manifest in `templates/` committen
-4. Im **`noteleaf`**-Repo: Submodule-Pointer auf den neuen Commit aktualisieren (`git submodule update --remote resources/noteleaf-templates`) und `composer run generate-registry` ausführen, um `lib/Service/Scan/ScanTemplateRegistry.php` neu aus dem Manifest zu generieren (Details siehe README dort)
+4. **Ab hier automatisch:** `.github/workflows/template-sync.yml` im
+   **`noteleaf`**-Repo übernimmt den Submodule-Bump und den
+   Registry-Codegen von selbst (täglich, per PR). Falls die neue Vorlage
+   nur bereits unterstützte Zonen-`renderer` verwendet (`noteArea`,
+   `titleField`, `tagsField`, `taskList`, `actionItems`), funktioniert dort
+   auch der PDF-Druck ohne weitere Code-Änderung. Nur bei wirklich neuem
+   Layout (z. B. einem neuen Zeitraster-Typ) braucht `PdfService.php` im
+   `noteleaf`-Repo noch eine eigene Ergänzung – siehe README dort.
 
 ### Vorlagen-Versionen
 
